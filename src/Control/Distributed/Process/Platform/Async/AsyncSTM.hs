@@ -55,6 +55,7 @@ module Control.Distributed.Process.Platform.Async.AsyncSTM
   , waitAnyTimeout
   , waitTimeout
   , waitCheckTimeout
+  , waitCancelTimeout
     -- * STM versions
   , pollSTM
   , waitTimeoutSTM
@@ -240,6 +241,19 @@ waitTimeout t hAsync = do
   (sp, rp) <- newChan :: (Serializable a) => Process (Channel (AsyncResult a))
   pid <- spawnLocal $ wait hAsync >>= sendChan sp
   receiveChanTimeout (asTimeout t) rp `finally` kill pid "timeout"
+
+-- | Wait for an asynchronous operation to complete or timeout. If it times out,
+-- then 'cancelWait' the async handle instead.
+--
+waitCancelTimeout :: (Serializable a)
+                  => TimeInterval
+                  -> AsyncSTM a
+                  -> Process (AsyncResult a)
+waitCancelTimeout t hAsync = do
+  r <- waitTimeout t hAsync
+  case r of
+    Nothing -> cancelWait hAsync
+    Just ar -> return ar
 
 -- | As 'waitTimeout' but uses STM directly, which might be more efficient.
 waitTimeoutSTM :: (Serializable a)

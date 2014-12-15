@@ -183,6 +183,11 @@ testAsyncRecursive result = do
     myNode <- processNodeId <$> getSelfPid
     fib (myNode,6) >>= stash result
 
+testAsyncWaitCancelTimeout :: TestResult (AsyncResult ()) -> Process ()
+testAsyncWaitCancelTimeout result = do
+     p1 <- async $ task $ sleep $ seconds 20
+     waitCancelTimeout (seconds 1) p1 >>= stash result
+
 tests :: LocalNode  -> [Test]
 tests localNode = [
     testGroup "Handling async results with STM" [
@@ -236,6 +241,10 @@ tests localNode = [
             (delayedAssertion
              "expected Fibonacci 6 to be evaluated, and value of 8 returned"
              localNode 8 testAsyncRecursive)
+        , testCase "testAsyncWaitCancelTimeout"
+	    (delayedAssertion
+	     "expected waitCancelTimeout to return a value"
+	     localNode AsyncCancelled testAsyncWaitCancelTimeout)
       ]
   ]
 
